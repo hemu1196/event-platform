@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Ticket, ShieldCheck, User, Info, ArrowLeft, Plus, Minus, Loader2, Award } from 'lucide-react';
+import { Calendar, MapPin, Ticket, ShieldCheck, User, Info, ArrowLeft, Plus, Minus, Loader2, Award, Copy, ExternalLink, QrCode, Check, CheckCircle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const EventDetailsPage = () => {
   const { id } = useParams();
@@ -18,9 +19,10 @@ const EventDetailsPage = () => {
   const [bookingCount, setBookingCount] = useState(1);
   const [bookingLoading, setBookingLoading] = useState(false);
   
-  // Custom states for simulated demo checkout
+  // Custom states for simulated demo checkout & UPI ID copy
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoOrderData, setDemoOrderData] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -41,20 +43,11 @@ const EventDetailsPage = () => {
     }
   };
 
-  // Loads Razorpay SDK script dynamically
-  const loadRazorpaySDK = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
+  const handleCopyUPI = () => {
+    navigator.clipboard.writeText('8309305811@ybl');
+    setCopied(true);
+    showToast('UPI ID copied to clipboard!', 'success');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleBooking = async () => {
@@ -68,7 +61,7 @@ const EventDetailsPage = () => {
     setBookingLoading(true);
 
     try {
-      // 2. Initialize Order
+      // 2. Initialize Order (checks capacity and creates a pending registration log)
       const orderRes = await api.post('/payments/order', {
         event_id: event.id,
         ticket_count: bookingCount
@@ -87,86 +80,21 @@ const EventDetailsPage = () => {
         return;
       }
 
-      // 4. Handle Simulated Demo Checkout
-      if (orderData.isDemoMode) {
-        setDemoOrderData(orderData);
-        setShowDemoModal(true);
-        setBookingLoading(false);
-        return;
-      }
-
-      // 5. Handle Live Razorpay SDK checkout
-      const sdkLoaded = await loadRazorpaySDK();
-      if (!sdkLoaded) {
-        // Fallback to simulated mode if Razorpay is blocked or offline!
-        showToast('Razorpay script blocked. Launching demo checkout fallback.', 'info');
-        setDemoOrderData({ ...orderData, isDemoMode: true });
-        setShowDemoModal(true);
-        setBookingLoading(false);
-        return;
-      }
-
-      const options = {
-        key: orderData.key,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'EventFlow Campus Ticketing',
-        description: `Booking for ${orderData.event_title}`,
-        order_id: orderData.order_id,
-        handler: async (response) => {
-          setBookingLoading(true);
-          try {
-            // Verify payment
-            const verifyRes = await api.post('/payments/verify', {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              registration_id: orderData.registration_id,
-              isDemoMode: false
-            });
-
-            if (verifyRes.data.success) {
-              showToast('Payment verified successfully!', 'success');
-              navigate(`/payments/success?ticket_id=${verifyRes.data.ticket_id}&registration_id=${orderData.registration_id}`);
-            } else {
-              showToast('Payment verification failed.', 'error');
-            }
-          } catch (verifyErr) {
-            console.error(verifyErr);
-            showToast('Verification server error.', 'error');
-          } finally {
-            setBookingLoading(false);
-          }
-        },
-        prefill: {
-          name: user.name,
-          email: user.email
-        },
-        theme: {
-          color: '#8b5cf6'
-        },
-        modal: {
-          ondismiss: () => {
-            showToast('Payment cancelled by user.', 'info');
-            setBookingLoading(false);
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      // 4. Handle UPI Checkout Modal Integration
+      setDemoOrderData(orderData);
+      setShowDemoModal(true);
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.message || 'Booking process encountered an error.';
       showToast(msg, 'error');
+    } finally {
       setBookingLoading(false);
     }
   };
 
-  // Function to execute simulated success / failure paths!
-  const executeSimulatedCheckout = async (success = true) => {
+  const executeUPICheckout = async (success = true) => {
     if (!success) {
-      showToast('Simulated Payment Cancelled/Failed.', 'error');
+      showToast('UPI Billing Session Cancelled.', 'error');
       setShowDemoModal(false);
       return;
     }
@@ -175,6 +103,7 @@ const EventDetailsPage = () => {
     setShowDemoModal(false);
 
     try {
+      // Complete transaction via verification API using isDemoMode: true
       const verifyRes = await api.post('/payments/verify', {
         razorpay_order_id: demoOrderData.order_id,
         registration_id: demoOrderData.registration_id,
@@ -182,14 +111,14 @@ const EventDetailsPage = () => {
       });
 
       if (verifyRes.data.success) {
-        showToast('Simulated Checkout Success!', 'success');
+        showToast('UPI Transaction Confirmed & Booked!', 'success');
         navigate(`/payments/success?ticket_id=${verifyRes.data.ticket_id}&registration_id=${demoOrderData.registration_id}`);
       } else {
-        showToast('Simulated verification check failed.', 'error');
+        showToast('Verification query reported failed transaction.', 'error');
       }
     } catch (err) {
       console.error(err);
-      showToast('Simulation verification failed.', 'error');
+      showToast('Verification server error. Please try again.', 'error');
     } finally {
       setBookingLoading(false);
     }
@@ -379,7 +308,7 @@ const EventDetailsPage = () => {
         </div>
       </div>
 
-      {/* 6. MOCK SIMULATED PAYMENT DIALOG MODAL */}
+      {/* 6. SECURE UPI PAYMENT DIALOG MODAL */}
       <AnimatePresence>
         {showDemoModal && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
@@ -388,7 +317,7 @@ const EventDetailsPage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => executeSimulatedCheckout(false)}
+              onClick={() => executeUPICheckout(false)}
               className="absolute inset-0 bg-black/85 backdrop-blur-md"
             />
 
@@ -399,46 +328,88 @@ const EventDetailsPage = () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="w-full max-w-md p-6 rounded-2xl glass-panel relative z-10 border border-primary/20 text-center shadow-glow"
             >
-              <div className="inline-flex p-3 rounded-full bg-primary/10 border border-primary/25 text-primary-light mb-4 animate-pulse">
-                <Ticket className="w-6 h-6" />
+              <div className="inline-flex p-3 rounded-full bg-primary/10 border border-primary/25 text-primary-light mb-3">
+                <QrCode className="w-6 h-6 animate-pulse" />
               </div>
 
-              <h3 className="text-xl font-black text-white mb-2">Simulated Razorpay Gateway</h3>
-              <p className="text-xs text-dark-muted max-w-sm mx-auto mb-6 leading-relaxed">
-                This transaction is executing in **Sandbox Demonstration Mode**. You do not need real credit cards. Click a checkout action below to finalize your booking logs.
+              <h3 className="text-xl font-black text-white mb-1">Scan & Pay via UPI</h3>
+              <p className="text-xs text-dark-muted max-w-sm mx-auto mb-4 leading-relaxed">
+                Scan the QR code below using GPay, PhonePe, Paytm, or BHIM to complete your registration.
               </p>
 
-              {/* Order Specs */}
-              <div className="p-4 rounded-xl border border-white/5 bg-white/[0.01] text-left text-xs mb-6 flex flex-col gap-2">
-                <div className="flex justify-between font-bold">
-                  <span className="text-dark-muted">College Event:</span>
-                  <span className="text-white truncate max-w-[200px]">{demoOrderData?.event_title}</span>
-                </div>
-                <div className="flex justify-between font-bold">
-                  <span className="text-dark-muted">Receipt ID:</span>
-                  <span className="text-white uppercase font-mono">{demoOrderData?.order_id.slice(-12)}</span>
-                </div>
-                <div className="flex justify-between font-bold border-t border-white/5 pt-2 text-sm">
-                  <span className="text-dark-muted">Grand Total:</span>
-                  <span className="text-primary-light font-extrabold">₹{(demoOrderData?.amount / 100).toFixed(2)}</span>
-                </div>
-              </div>
+              {/* QR Code Container */}
+              {(() => {
+                const totalAmount = (parseFloat(event.price) * bookingCount).toFixed(2);
+                const upiLink = `upi://pay?pa=8309305811@ybl&pn=Hemachandra&am=${totalAmount}&cu=INR`;
+                
+                return (
+                  <>
+                    <div className="bg-white p-4 rounded-2xl inline-block shadow-2xl mb-4 border border-primary-light/10">
+                      <QRCodeSVG value={upiLink} size={150} />
+                    </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-4">
-                <button
-                  onClick={() => executeSimulatedCheckout(false)}
-                  className="flex-grow py-3 rounded-xl border border-white/10 hover:bg-white/5 font-bold text-xs text-white transition-all"
-                >
-                  Cancel Order
-                </button>
-                <button
-                  onClick={() => executeSimulatedCheckout(true)}
-                  className="flex-grow py-3 rounded-xl bg-gradient-to-r from-primary to-accent-cyan hover:opacity-90 font-bold text-xs text-white shadow-lg shadow-primary/20 transition-all animate-bounce"
-                >
-                  Simulate Success
-                </button>
-              </div>
+                    {/* Price Tag */}
+                    <div className="mb-4">
+                      <p className="text-[10px] text-dark-muted font-bold uppercase tracking-wider">Amount Due</p>
+                      <h4 className="text-3xl font-black text-gradient-neon mt-0.5">₹{totalAmount}</h4>
+                    </div>
+
+                    {/* UPI ID Copy Row */}
+                    <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] text-xs font-semibold mb-4 gap-2 text-left">
+                      <div>
+                        <p className="text-[9px] text-dark-muted uppercase font-bold tracking-wider">UPI ID</p>
+                        <p className="text-white font-mono mt-0.5 select-all">8309305811@ybl</p>
+                      </div>
+                      <button
+                        onClick={handleCopyUPI}
+                        type="button"
+                        className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1 transition-all ${
+                          copied ? 'bg-accent-emerald/20 text-accent-emerald' : 'bg-white/5 hover:bg-white/10 text-white'
+                        }`}
+                      >
+                        {copied ? <Check className="w-3.5 h-3.5 animate-bounce" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copied ? 'Copied!' : 'Copy ID'}
+                      </button>
+                    </div>
+
+                    {/* Open in UPI App button (Mobile deep links helper) */}
+                    <div className="flex flex-col gap-3">
+                      <a
+                        href={upiLink}
+                        className="w-full py-3 rounded-xl font-bold text-xs bg-white/5 border border-white/10 hover:bg-white/10 text-white flex items-center justify-center gap-2 transition-all active:scale-98"
+                      >
+                        <ExternalLink className="w-4 h-4 text-dark-muted" />
+                        Open in UPI App
+                      </a>
+
+                      <button
+                        onClick={() => executeUPICheckout(true)}
+                        disabled={bookingLoading}
+                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-accent-cyan hover:opacity-90 font-bold text-sm text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-98 animate-pulse-glow"
+                      >
+                        {bookingLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Confirming Registration...
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-4.5 h-4.5" />
+                            I Have Completed Payment
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => executeUPICheckout(false)}
+                        className="w-full py-2.5 rounded-xl border border-white/5 hover:bg-white/5 font-bold text-xs text-dark-dim hover:text-white transition-all active:scale-98"
+                      >
+                        Cancel Booking
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </motion.div>
           </div>
         )}
