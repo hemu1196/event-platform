@@ -16,12 +16,7 @@ const PORT = process.env.PORT || 5001;
 
 // Middlewares
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://event-platform-theta-ruby.vercel.app"
-  ],
-  credentials: true,
+  origin: '*', // In production, replace with frontend URL
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));

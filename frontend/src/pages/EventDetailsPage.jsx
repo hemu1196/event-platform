@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Ticket, ShieldCheck, User, Info, ArrowLeft, Plus, Minus, Loader2, Award, Copy, ExternalLink, QrCode, Check, CheckCircle } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { Calendar, MapPin, Ticket, ShieldCheck, User, Info, ArrowLeft, Plus, Minus, Loader2, Award } from 'lucide-react';
 
 const EventDetailsPage = () => {
   const { id } = useParams();
@@ -19,10 +18,9 @@ const EventDetailsPage = () => {
   const [bookingCount, setBookingCount] = useState(1);
   const [bookingLoading, setBookingLoading] = useState(false);
   
-  // Custom states for simulated demo checkout & UPI ID copy
+  // Custom states for simulated demo checkout
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [demoOrderData, setDemoOrderData] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -43,11 +41,20 @@ const EventDetailsPage = () => {
     }
   };
 
-  const handleCopyUPI = () => {
-    navigator.clipboard.writeText('8309305811@ybl');
-    setCopied(true);
-    showToast('UPI ID copied to clipboard!', 'success');
-    setTimeout(() => setCopied(false), 2000);
+  // Loads Razorpay SDK script dynamically
+  const loadRazorpaySDK = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
   };
 
   const handleBooking = async () => {
@@ -61,7 +68,7 @@ const EventDetailsPage = () => {
     setBookingLoading(true);
 
     try {
-      // 2. Initialize Order (checks capacity and creates a pending registration log)
+      // 2. Initialize Order
       const orderRes = await api.post('/payments/order', {
         event_id: event.id,
         ticket_count: bookingCount
@@ -80,21 +87,86 @@ const EventDetailsPage = () => {
         return;
       }
 
-      // 4. Handle UPI Checkout Modal Integration
-      setDemoOrderData(orderData);
-      setShowDemoModal(true);
+      // 4. Handle Simulated Demo Checkout
+      if (orderData.isDemoMode) {
+        setDemoOrderData(orderData);
+        setShowDemoModal(true);
+        setBookingLoading(false);
+        return;
+      }
+
+      // 5. Handle Live Razorpay SDK checkout
+      const sdkLoaded = await loadRazorpaySDK();
+      if (!sdkLoaded) {
+        // Fallback to simulated mode if Razorpay is blocked or offline!
+        showToast('Razorpay script blocked. Launching demo checkout fallback.', 'info');
+        setDemoOrderData({ ...orderData, isDemoMode: true });
+        setShowDemoModal(true);
+        setBookingLoading(false);
+        return;
+      }
+
+      const options = {
+        key: orderData.key,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'EventFlow Campus Ticketing',
+        description: `Booking for ${orderData.event_title}`,
+        order_id: orderData.order_id,
+        handler: async (response) => {
+          setBookingLoading(true);
+          try {
+            // Verify payment
+            const verifyRes = await api.post('/payments/verify', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              registration_id: orderData.registration_id,
+              isDemoMode: false
+            });
+
+            if (verifyRes.data.success) {
+              showToast('Payment verified successfully!', 'success');
+              navigate(`/payments/success?ticket_id=${verifyRes.data.ticket_id}&registration_id=${orderData.registration_id}`);
+            } else {
+              showToast('Payment verification failed.', 'error');
+            }
+          } catch (verifyErr) {
+            console.error(verifyErr);
+            showToast('Verification server error.', 'error');
+          } finally {
+            setBookingLoading(false);
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email
+        },
+        theme: {
+          color: '#8b5cf6'
+        },
+        modal: {
+          ondismiss: () => {
+            showToast('Payment cancelled by user.', 'info');
+            setBookingLoading(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.message || 'Booking process encountered an error.';
       showToast(msg, 'error');
-    } finally {
       setBookingLoading(false);
     }
   };
 
-  const executeUPICheckout = async (success = true) => {
+  // Function to execute simulated success / failure paths!
+  const executeSimulatedCheckout = async (success = true) => {
     if (!success) {
-      showToast('UPI Billing Session Cancelled.', 'error');
+      showToast('Simulated Payment Cancelled/Failed.', 'error');
       setShowDemoModal(false);
       return;
     }
@@ -103,7 +175,6 @@ const EventDetailsPage = () => {
     setShowDemoModal(false);
 
     try {
-      // Complete transaction via verification API using isDemoMode: true
       const verifyRes = await api.post('/payments/verify', {
         razorpay_order_id: demoOrderData.order_id,
         registration_id: demoOrderData.registration_id,
@@ -111,14 +182,14 @@ const EventDetailsPage = () => {
       });
 
       if (verifyRes.data.success) {
-        showToast('UPI Transaction Confirmed & Booked!', 'success');
+        showToast('Simulated Checkout Success!', 'success');
         navigate(`/payments/success?ticket_id=${verifyRes.data.ticket_id}&registration_id=${demoOrderData.registration_id}`);
       } else {
-        showToast('Verification query reported failed transaction.', 'error');
+        showToast('Simulated verification check failed.', 'error');
       }
     } catch (err) {
       console.error(err);
-      showToast('Verification server error. Please try again.', 'error');
+      showToast('Simulation verification failed.', 'error');
     } finally {
       setBookingLoading(false);
     }
@@ -308,16 +379,16 @@ const EventDetailsPage = () => {
         </div>
       </div>
 
-      {/* 6. SECURE UPI PAYMENT DIALOG MODAL */}
+      {/* 6. UPI QR CODE PAYMENT MODAL */}
       <AnimatePresence>
         {showDemoModal && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-            {/* Modal Overlay blurs */}
+            {/* Modal Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => executeUPICheckout(false)}
+              onClick={() => executeSimulatedCheckout(false)}
               className="absolute inset-0 bg-black/85 backdrop-blur-md"
             />
 
@@ -326,90 +397,76 @@ const EventDetailsPage = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-full max-w-md p-6 rounded-2xl glass-panel relative z-10 border border-primary/20 text-center shadow-glow"
+              className="w-full max-w-sm p-6 rounded-2xl glass-panel relative z-10 border border-primary/20 text-center shadow-glow"
             >
-              <div className="inline-flex p-3 rounded-full bg-primary/10 border border-primary/25 text-primary-light mb-3">
-                <QrCode className="w-6 h-6 animate-pulse" />
-              </div>
-
-              <h3 className="text-xl font-black text-white mb-1">Scan & Pay via UPI</h3>
-              <p className="text-xs text-dark-muted max-w-sm mx-auto mb-4 leading-relaxed">
-                Scan the QR code below using GPay, PhonePe, Paytm, or BHIM to complete your registration.
+              <h3 className="text-xl font-black text-white mb-1">UPI Payment Gateway</h3>
+              <p className="text-[11px] text-dark-muted max-w-xs mx-auto mb-4">
+                Scan the QR code below or use your favorite UPI banking app to make the payment.
               </p>
 
-              {/* QR Code Container */}
+              {/* Dynamic QR Code Generator */}
               {(() => {
-                const totalAmount = (parseFloat(event.price) * bookingCount).toFixed(2);
-                const upiLink = `upi://pay?pa=8309305811@ybl&pn=Hemachandra&am=${totalAmount}&cu=INR`;
+                const upiAmount = (demoOrderData?.amount / 100).toFixed(2);
+                const upiLink = `upi://pay?pa=8309305811@ybl&pn=Hemachandra&am=${upiAmount}&cu=INR`;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
                 
                 return (
                   <>
-                    <div className="bg-white p-4 rounded-2xl inline-block shadow-2xl mb-4 border border-primary-light/10">
-                      <QRCodeSVG value={upiLink} size={150} />
+                    {/* QR Display */}
+                    <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl mb-4 border border-white/10 shadow-inner">
+                      <img 
+                        src={qrUrl} 
+                        alt="UPI Payment QR Code" 
+                        className="w-[160px] h-[160px] object-contain"
+                      />
+                      <span className="text-[9px] text-slate-800 font-extrabold mt-2 uppercase tracking-wider">
+                        Scan to Pay: ₹{upiAmount}
+                      </span>
                     </div>
 
-                    {/* Price Tag */}
-                    <div className="mb-4">
-                      <p className="text-[10px] text-dark-muted font-bold uppercase tracking-wider">Amount Due</p>
-                      <h4 className="text-3xl font-black text-gradient-neon mt-0.5">₹{totalAmount}</h4>
-                    </div>
-
-                    {/* UPI ID Copy Row */}
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] text-xs font-semibold mb-4 gap-2 text-left">
-                      <div>
-                        <p className="text-[9px] text-dark-muted uppercase font-bold tracking-wider">UPI ID</p>
-                        <p className="text-white font-mono mt-0.5 select-all">8309305811@ybl</p>
+                    {/* Copy UPI ID Box */}
+                    <div className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/[0.02] mb-3">
+                      <div className="text-left">
+                        <span className="text-[8px] text-dark-muted font-bold uppercase tracking-wider block">UPI ID</span>
+                        <span className="text-xs font-mono text-white font-bold select-all">8309305811@ybl</span>
                       </div>
                       <button
-                        onClick={handleCopyUPI}
-                        type="button"
-                        className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1 transition-all ${
-                          copied ? 'bg-accent-emerald/20 text-accent-emerald' : 'bg-white/5 hover:bg-white/10 text-white'
-                        }`}
+                        onClick={() => {
+                          navigator.clipboard.writeText('8309305811@ybl');
+                          showToast('UPI ID copied to clipboard!', 'success');
+                        }}
+                        className="px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase bg-white/5 hover:bg-white/10 text-white border border-white/5 active:scale-95 transition-all"
                       >
-                        {copied ? <Check className="w-3.5 h-3.5 animate-bounce" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copied ? 'Copied!' : 'Copy ID'}
+                        Copy ID
                       </button>
                     </div>
 
-                    {/* Open in UPI App button (Mobile deep links helper) */}
-                    <div className="flex flex-col gap-3">
-                      <a
-                        href={upiLink}
-                        className="w-full py-3 rounded-xl font-bold text-xs bg-white/5 border border-white/10 hover:bg-white/10 text-white flex items-center justify-center gap-2 transition-all active:scale-98"
-                      >
-                        <ExternalLink className="w-4 h-4 text-dark-muted" />
-                        Open in UPI App
-                      </a>
-
-                      <button
-                        onClick={() => executeUPICheckout(true)}
-                        disabled={bookingLoading}
-                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-accent-cyan hover:opacity-90 font-bold text-sm text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-98 animate-pulse-glow"
-                      >
-                        {bookingLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Confirming Registration...
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4.5 h-4.5" />
-                            I Have Completed Payment
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => executeUPICheckout(false)}
-                        className="w-full py-2.5 rounded-xl border border-white/5 hover:bg-white/5 font-bold text-xs text-dark-dim hover:text-white transition-all active:scale-98"
-                      >
-                        Cancel Booking
-                      </button>
-                    </div>
+                    {/* Open in App Deep Link */}
+                    <a
+                      href={upiLink}
+                      className="w-full py-2.5 mb-4 rounded-xl border border-primary-light/20 hover:bg-primary/5 font-extrabold text-xs text-primary-light transition-all flex items-center justify-center gap-1.5"
+                    >
+                      Open in UPI App
+                    </a>
                   </>
                 );
               })()}
+
+              {/* Confirm & Cancel Buttons */}
+              <button
+                onClick={() => executeSimulatedCheckout(true)}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-accent-cyan hover:opacity-95 font-extrabold text-xs text-white shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 mb-3"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                I Have Completed Payment
+              </button>
+
+              <button
+                onClick={() => executeSimulatedCheckout(false)}
+                className="w-full py-2 text-dark-muted hover:text-white font-bold text-[11px] transition-all"
+              >
+                Cancel Booking
+              </button>
             </motion.div>
           </div>
         )}

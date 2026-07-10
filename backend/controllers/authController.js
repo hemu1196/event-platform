@@ -65,13 +65,7 @@ export const signup = async (req, res) => {
     });
   } catch (error) {
     console.error('Signup Error:', error);
-    if (error.code === 'PGRST114' || error.message?.includes('relation "users" does not exist')) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Database setup incomplete. The "users" table is missing in Supabase. Please execute the SQL setup script in your Supabase SQL Editor.' 
-      });
-    }
-    return res.status(500).json({ success: false, message: error.message || 'Server error during signup.' });
+    return res.status(500).json({ success: false, message: 'Server error during signup.' });
   }
 };
 
@@ -121,13 +115,7 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login Error:', error);
-    if (error.code === 'PGRST114' || error.message?.includes('relation "users" does not exist')) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Database setup incomplete. The "users" table is missing in Supabase. Please execute the SQL setup script in your Supabase SQL Editor.' 
-      });
-    }
-    return res.status(500).json({ success: false, message: error.message || 'Server error during login.' });
+    return res.status(500).json({ success: false, message: 'Server error during login.' });
   }
 };
 

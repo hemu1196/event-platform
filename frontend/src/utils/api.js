@@ -1,10 +1,7 @@
 import axios from 'axios';
-import API_BASE_URL from '../config/api';
-
-const baseURL = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
 
 const api = axios.create({
-  baseURL
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 });
 
 // Axios Request Interceptor: Auto-attach JWT token if present in localStorage
