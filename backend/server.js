@@ -15,8 +15,30 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Middlewares
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://event-platform-theta-ruby.vercel.app",
+  "https://event-hub-eight-tau.vercel.app"
+];
+
 app.use(cors({
-  origin: '*', // In production, replace with frontend URL
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, postman, curl)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin matches allowed domains or is a Vercel preview URL/local port
+    const isAllowed = allowedOrigins.includes(origin) || 
+                      origin.endsWith('.vercel.app') || 
+                      /^http:\/\/localhost:\d+$/.test(origin);
+                      
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS policy'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
