@@ -1,0 +1,433 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #faf7f2;
+  --color-ivory-dark: #f3ede3;
+  --color-ivory-deep: #e8dfd1;
+  --color-teal: #0d3d3a;
+  --color-teal-dark: #145c57;
+  --color-teal-light: #1e7a72;
+  --color-gold: #c9923a;
+  --color-gold-dark: #e8b060;
+  --color-gold-light: #f5e3c8;
+  --color-rust: #a84b2f;
+  --color-text-dark: #1a1410;
+  --color-text-muted: #8a7a6d;
+  --color-border-ivory: #ddd3c4;
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-sans: 'Cabinet Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Cabinet Grotesk', sans-serif;
+    background: #faf7f2;
+    color: #1a1410;
+    min-height: 100vh;
+  }
+
+  /* Typography Styles */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid #ddd3c4;
+  }
+
+  .glass-card {
+    background: #ffffff;
+    border: 1px solid #ddd3c4;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 20px rgba(13, 61, 58, 0.03);
+    transition: all 0.35s ease;
+  }
+
+  .glass-card:hover {
+    background: #ffffff;
+    border-color: #c9923a;
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(13, 61, 58, 0.08);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #0d3d3a 0%, #1e7a72 50%, #c9923a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .gradient-bg {
+    background: linear-gradient(135deg, #0d3d3a 0%, #145c57 100%);
+  }
+
+  .mesh-bg {
+    background: 
+      radial-gradient(ellipse 80% 80% at 20% 20%, rgba(201, 146, 94, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 80% 80% at 80% 80%, rgba(13, 61, 58, 0.05) 0%, transparent 50%),
+      #faf7f2;
+  }
+
+  .btn-primary {
+    background: #0d3d3a;
+    color: #faf7f2;
+    padding: 0.75rem 1.75rem;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 0.925rem;
+    transition: all 0.25s ease;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(13, 61, 58, 0.15);
+  }
+
+  .btn-primary:hover {
+    background: #145c57;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(13, 61, 58, 0.25);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: #0d3d3a;
+    padding: 0.75rem 1.75rem;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 0.925rem;
+    transition: all 0.25s ease;
+    border: 2px solid #0d3d3a;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-outline:hover {
+    background: #0d3d3a;
+    color: #faf7f2;
+    transform: translateY(-2px);
+  }
+
+  .input-field {
+    background: #ffffff;
+    border: 1px solid #ddd3c4;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: #1a1410;
+    width: 100%;
+    font-size: 0.925rem;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+
+  .input-field:focus {
+    border-color: #0d3d3a;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(13, 61, 58, 0.05);
+  }
+
+  .input-field::placeholder {
+    color: #8a7a6d;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease forwards;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+
+/* ══════════ HERO ID-CARD 3D VISUAL ══════════ */
+.idc-stage {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  height: 520px;
+  margin: 0 auto;
+  perspective: 1000px;
+}
+
+.idc-mount {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d8d8d8, #8a8a8a 70%);
+  box-shadow: 0 2px 4px rgba(0,0,0,.3);
+  z-index: 5;
+}
+
+.idc-rig {
+  position: absolute;
+  top: 6px; left: 50%;
+  width: 2px; height: 100%;
+  transform-origin: top center;
+  animation: idc-swing 7s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+@keyframes idc-swing {
+  0%, 100% { transform: rotate(-2.4deg) rotateY(-5deg); }
+  50% { transform: rotate(2.4deg) rotateY(5deg); }
+}
+
+.idc-stage:hover .idc-rig {
+  animation-duration: 2.2s;
+}
+
+.idc-strap {
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 24px; height: 160px;
+  background: repeating-linear-gradient(
+    180deg,
+    #a84b2f 0px, #a84b2f 24px,
+    #8a3a25 24px, #8a3a25 28px
+  );
+  border-radius: 4px;
+  box-shadow:
+    inset 3px 0 6px rgba(0,0,0,.22),
+    inset -3px 0 6px rgba(0,0,0,.22),
+    0 6px 14px rgba(0,0,0,.15);
+}
+
+.idc-strap::before {
+  content: "EVENTHUB PLATFORM · EVENTHUB PLATFORM";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 140px;
+  transform: translate(-50%, -50%) rotate(90deg);
+  color: rgba(255,255,255,.9);
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 800;
+  font-size: 6.5px;
+  letter-spacing: 2px;
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0,0,0,.25);
+}
+
+.idc-clip {
+  position: absolute;
+  top: 154px; left: 50%;
+  transform: translateX(-50%);
+  width: 22px; height: 26px;
+  z-index: 4;
+}
+
+.idc-clip .idc-loop {
+  position: absolute;
+  top: 0; left: 50%;
+  width: 14px; height: 14px;
+  transform: translateX(-50%);
+  border: 3px solid #d8d8d8;
+  border-radius: 4px 4px 0 0;
+  border-bottom: none;
+  background: linear-gradient(180deg, #f0f0f0, #c2c2c2);
+}
+
+.idc-clip .idc-pinch {
+  position: absolute;
+  top: 10px; left: 50%;
+  width: 18px; height: 14px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #efefef, #a8a8a8);
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2);
+}
+
+.idc-card {
+  position: absolute;
+  top: 174px; left: 50%;
+  transform: translateX(-50%);
+  width: 260px; height: 320px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #0d3d3a 0%, #061f1d 100%);
+  box-shadow:
+    0 20px 35px rgba(13, 61, 58, 0.2),
+    0 4px 8px rgba(13, 61, 58, 0.1);
+  padding: 18px;
+  color: #faf7f2;
+  overflow: hidden;
+  border: 1px solid rgba(201, 146, 58, 0.25);
+  transform-style: preserve-3d;
+  transition: transform 0.5s ease;
+}
+
+.idc-card::before {
+  content: "";
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 18px; height: 6px;
+  border-radius: 4px;
+  background: #061f1d;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.5);
+}
+
+.idc-card::after {
+  content: "";
+  position: absolute;
+  right: -40px; bottom: -40px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  border: 1px solid rgba(232,176,96,.1);
+  pointer-events: none;
+}
+
+.idc-ribbon-clip {
+  position: absolute; inset: 0;
+  border-radius: 18px; overflow: hidden;
+  pointer-events: none; z-index: 3;
+}
+
+.idc-ribbon {
+  position: absolute;
+  top: 15px; right: -32px;
+  width: 110px;
+  transform: rotate(40deg);
+  background: linear-gradient(90deg, #c9923a, #e8b060);
+  color: #0d3d3a;
+  text-align: center;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 8px; font-weight: 800; letter-spacing: 1px;
+  padding: 3px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2);
+  z-index: 2;
+}
+
+.idc-card-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-top: 10px;
+}
+
+.idc-org {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 8.5px; letter-spacing: 1.2px;
+  color: #e8b060; text-transform: uppercase;
+}
+
+.idc-org b {
+  color: #faf7f2; display: block; font-size: 9.5px; letter-spacing: 0.8px; margin-top: 1px; font-weight: 700;
+}
+
+.idc-pass-pill {
+  background: #c9923a;
+  color: #0d3d3a;
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700; font-size: 13px;
+  padding: 4px 8px; border-radius: 8px;
+  text-align: center; line-height: 1.05;
+  box-shadow: 0 2px 5px rgba(0,0,0,.15);
+}
+
+.idc-pass-pill span {
+  display: block; font-family: 'Cabinet Grotesk', sans-serif; font-size: 7px; font-weight: 700; letter-spacing: 0.5px;
+}
+
+.idc-photo-wrap {
+  margin: 12px auto 8px;
+  width: 100px; height: 110px;
+  border-radius: 10px;
+  background: linear-gradient(160deg, #102d2a, #1a4f4a);
+  overflow: hidden;
+  border: 1.5px solid rgba(232, 176, 96, 0.3);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.idc-name {
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px; font-weight: 700;
+  letter-spacing: .3px; margin: 1px 0;
+}
+
+.idc-name span { color: #e8b060; font-style: italic; }
+
+.idc-role-line {
+  text-align: center;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 9px; color: rgba(250,247,242,.6);
+  letter-spacing: .5px; margin-bottom: 8px;
+}
+
+.idc-id-row {
+  display: flex; justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px; color: rgba(250,247,242,.5);
+  border-top: 1px dashed rgba(232, 176, 96, 0.2);
+  padding-top: 6px; letter-spacing: .2px;
+}
+
+.idc-barcode {
+  margin-top: 6px; height: 12px;
+  background: repeating-linear-gradient(90deg,
+    #faf7f2 0px, #faf7f2 1.5px,
+    transparent 1.5px, transparent 3px,
+    #faf7f2 3px, #faf7f2 4px,
+    transparent 4px, transparent 6px);
+  opacity: .7;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #faf7f2; }
+::-webkit-scrollbar-thumb { background: #0d3d3a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #145c57; }
